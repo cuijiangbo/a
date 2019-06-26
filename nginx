@@ -1,0 +1,1045 @@
+--with-http_ssl_module                        //开启SSL加密功能
+--with-stream                                 //开启TCP/UDP代理模块
+--with-http_stub_status_module                //开启status状态页面
+
+构建Nginx服务器
+软件包 
+gcc pcre-devel openssl-devel
+模块
+--prefix=/usr/local/nginx           //指定安装路径
+--user=nginx                        //指定用户
+--group=nginx                       //指定组
+--with-http_ssl_module              //开启SSL加密功能
+
+netstat  -planut  |  grep nginx      //查看系统中启动的端口信息
+nginx –v                             //查看版本
+  
+############################################################################
+用户认证
+1）修改/usr/local/nginx/conf/nginx.conf
+server {
+        listen       80;
+        server_name  localhost;
+        auth_basic "Input Password:";                        //认证提示符信息
+        auth_basic_user_file "/usr/local/nginx/pass";        //认证的密码文件
+2）生成密码文件，创建用户及密码
+ yum -y install  httpd-tools
+ htpasswd -c /usr/local/nginx/pass   tom   //创建密码文件
+ nginx -s reload                           //重新加载配置文件
+
+############################################################################
+基于域名的虚拟主机
+vim /usr/local/nginx/conf/nginx.conf
+server {
+        listen       80;                             //端口
+        server_name  www.a.com;                      //域名
+auth_basic "Input Password:";                        //认证提示符
+auth_basic_user_file "/usr/local/nginx/pass";        //认证密码文件
+location / {
+            root   html;                             //指定网站根路径
+            index  index.html index.htm;
+
+… …
+    server {
+        listen  80;                                   //端口
+        server_name  www.b.com;                       //域名
+location / { 
+        root   www;                                   //指定网站根路径
+        index  index.html index.htm;
+2）创建网站根目录及对应首页文件
+mkdir /usr/local/nginx/www
+3）重启nginx服务
+
+###########################################################################
+SSL虚拟主机
+1）生成私钥与证书
+cd /usr/local/nginx/conf
+openssl genrsa > cert.key                            生成私钥
+openssl req -new -x509 -key cert.key > cert.pem      生成证书
+2）修改Nginx配置文件，设置加密网站的虚拟主机
+vim  /usr/local/nginx/conf/nginx.conf   
+server {
+        listen       443 ssl;
+        server_name            www.c.com;
+        ssl_certificate      cert.pem;               这里是证书文件
+        ssl_certificate_key  cert.key;               这里是私钥文件
+        ssl_session_cache    shared:SSL:1m;
+        ssl_session_timeout  5m;
+        ssl_ciphers  HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers  on;
+        location / {
+            root   html;
+            index  index.html index.htm;
+          }
+          }
+3）重启nginx服务
+4）修改客户端主机的/etc/hosts文件，进行域名解析
+firefox   https://www.c.com
+
+###############################################################################
+###############################################################################
+###############################################################################
+部署LNMP环境
+
+步骤一：安装软件
+1）使用yum安装基础依赖包
+ yum -y install   gcc       openssl-devel    pcre-devel
+ yum -y install   mariadb   mariadb-server   mariadb-devel
+ yum -y  install  php       php-mysql        php-fpm
+2）源码安装Nginx
+ useradd -s /sbin/nologin  nginx
+ tar -xvf nginx-1.12.2.tar.gz
+ cd nginx-1.12.2
+ ./configure  --user=nginx   --group=nginx   --with-http_ssl_module
+
+步骤二：启动服务
+     mariadb      php-fpm     nginx
+
+
+构建LNMP平台
+步骤一： php-fpm配置文件
+1）查看php-fpm配置文件（实验中不需要修改该文件）
+vim /etc/php-fpm.d/www.conf
+
+[www]
+listen = 127.0.0.1:9000             //PHP端口号
+pm.max_children = 32                //最大进程数量
+pm.start_servers = 15               //最小进程数量
+pm.min_spare_servers = 5            //最少需要几个空闲着的进程
+pm.max_spare_servers = 32           //最多允许几个进程处于空闲状态
+
+步骤二：修改Nginx配置文件并启动服务
+vim /usr/local/nginx/conf/nginx.conf
+
+location  ~  \.php$  {
+            root           html;
+            fastcgi_pass   127.0.0.1:9000;    //将请求转发给本机9000端口，PHP解释器
+            fastcgi_index  index.php;
+            include        fastcgi.conf;       //加载其他配置文件
+
+步骤三：创建PHP页面，测试LNMP架构能否解析PHP页面
+vim /usr/local/nginx/html/test.php
+<?php
+$i="This is a test Page";
+echo $i;
+?>
+
+客户端测试
+
+##################################################################################
+地址重写
+
+步骤一：修改配置文件(访问a.html重定向到b.html)
+1）修改Nginx服务配置
+server
+..
+rewrite /a.html  /b.html; 
+2）重新加载配置文件
+3）客户端测试
+
+步骤二：访问a.html重定向到b.html（跳转地址栏）
+1）修改Nginx服务配置
+rewrite /a.html  /b.html  redirect;  
+2）重新加载配置文件
+3）客户端测试（仔细观察浏览器地址栏的变化）
+
+步骤三：修改配置文件(访问192.168.4.5的请求重定向至www.tmooc.cn)
+1) 修改Nginx服务配置
+rewrite ^/  http://www.tmooc.cn/;
+2）重新加载配置文件
+3）客户端测试（真实机测试，真实机才可以连接tmooc）
+
+步骤四：修改配置文件(访问192.168.4.5/下面子页面，重定向至www.tmooc.cn/下相同的页面)
+1) 修改Nginx服务配置
+rewrite ^/(.*)$  http://www.tmooc.cn/$1;
+2）重新加载配置文件
+3）客户端测试（真实机测试，真实机才可以连接tmooc）
+
+步骤五：修改配置文件(实现curl和火狐访问相同链接返回的页面不同)
+1) 创建网页目录以及对应的页面文件
+ echo "AAAAAA" > /usr/local/nginx/html/test.html
+ mkdir  -p       /usr/local/nginx/html/firefox/
+ echo "BBBBBB" > /usr/local/nginx/html/firefox/test.html
+2) 修改Nginx服务配置
+location {
+..
+}
+if ($http_user_agent ~* firefox) {            //识别客户端firefox浏览器
+rewrite ^(.*)$  /firefox/$1;
+}
+#这里，~符号代表正则匹配，*符号代表不区分大小写
+3）重新加载配置文件
+4）客户端测试
+ firefox  http://192.168.4.5/test.html
+ curl     http://192.168.4.5/test.html
+
+5）地址重写格式【总结】
+rewrite   旧地址 新地址 [选项];
+last      不再读其他rewrite
+break     不再读其他语句，结束请求
+redirect  临时重定向
+permament 永久重定向
+
+#################################################################################
+#################################################################################
+#################################################################################
+Nginx反向代理
+步骤一：部署实施后端Web服务器
+yum  -y  install  httpd
+echo "192.168.2.100" > /var/www/html/index.html
+systemctl restart httpd
+
+步骤二：配置Nginx服务器，添加服务器池，实现反向代理功能
+1）修改/usr/local/nginx/conf/nginx.conf配置文件
+http {
+..
+upstream webserver {
+                server 192.168.2.100:80;
+                server 192.168.2.200:80;
+                     }
+location / {
+proxy_pass http://webserver;    通过proxy_pass将用户的请求转发给webserver集群
+2）重新加载配置
+3）客户端使用浏览器访问代理服务器测试轮询效果
+#################################################################################
+upstream服务器集群池属性
+upstream webserver {
+          ip_hash;      通过ip_hash设置调度规则为：相同客户端访问相同服务器
+          server 192.168.2.100 weight=1 max_fails=1 fail_timeout=30;
+          server 192.168.2.200 weight=2 max_fails=2 fail_timeout=30;
+          server 192.168.2.101 down;
+              }
+ weight        设置服务器权重值，默认值为1
+ max_fails     设置最大失败次数
+ fail_timeout  设置失败超时时间，单位为秒
+ down          标记服务器已关机，不参与集群调度
+###################################################################################
+Nginx的TCP/UDP调度器
+
+步骤一：部署支持4层TCP/UDP代理的Nginx服务器
+1）部署nginx服务器
+  ./configure   --with-http_ssl_module    --with-stream
+步骤二：配置Nginx服务器，添加服务器池，实现TCP/UDP反向代理功能
+stream {
+        upstream backend {
+        server 192.168.2.100:22;            //后端SSH服务器的IP和端口
+        server 192.168.2.200:22;
+         }
+        server {
+               listen 12345;                //Nginx监听的端口
+               proxy_connect_timeout 1s;    //连接的超时时间，可选配置
+               proxy_timeout 3s;
+               proxy_pass backend;
+http { ..
+2）重新加载配置
+3）客户端使用访问代理服务器测试轮询效果
+  ssh  192.168.4.5 -p 12345                  //使用该命令多次访问查看效果
+
+############################################################################
+############################################################################
+Nginx常见问题处理
+
+步骤一：自定义报错页面
+1）优化前，客户端使用浏览器访问不存在的页面，会提示404文件未找到
+2）修改Nginx配置文件，自定义报错页面
+  charset utf-8;                       //仅需要中文时需要改选项，可选项
+  error_page   404  /404.html;         //自定义错误页面
+
+  vim /usr/local/nginx/html/404.html   //生成错误页面
+  Oops,No NO no page …
+3）重新加载配置
+4）优化后，客户端使用浏览器访问不存在的页面，会提示自己定义的40x.html页面
+
+###########################################################################
+步骤二：如何查看服务器状态信息（非常重要的功能）
+
+1）编译安装时使用--with-http_stub_status_module开启状态页面模块
+2）启用Nginx服务并查看监听端口状态
+  netstat  -anptu  |  grep nginx
+3）修改Nginx配置文件，定义状态页面
+location /status {
+                stub_status on;
+                #allow IP地址;
+                #deny IP地址;
+4) 重新加载配置
+5) 查看状态页面信息
+  curl  http://192.168.4.5/status
+
+#################################################################################
+步骤三：优化Nginx并发量
+
+1）优化前使用ab高并发测试
+ab -n 2000 -c 2000 http://192.168.4.5/
+
+Benchmarking 192.168.4.5 (be patient)
+socket: Too many open files (24)          //提示打开文件数量过多
+2）修改Nginx配置文件，增加并发量
+worker_processes  2;                      //与CPU核心数量一致
+events {
+worker_connections 65535;                 //每个worker最大并发连接数
+}
+3）优化Linux内核参数（最大文件数量）
+ ulimit -a                        //查看所有属性值
+ ulimit -Hn 100000                //设置硬限制（临时规则）
+ ulimit -Sn 100000                //设置软限制（临时规则
+ 
+vim /etc/security/limits.conf
+    .. ..
+*             soft         nofile      100000
+*             hard         nofile      100000
+用户或组    硬限制或软限制    需要限制的项目   限制的值
+4）优化后测试服务器并发量（因为客户端没调内核参数，所以在proxy测试）
+ab -n 2000 -c 2000 http://192.168.4.5/
+
+#################################################################################
+步骤四：优化Nginx数据包头缓存
+
+1）优化前，使用脚本测试长头部请求是否能获得响应
+cat lnmp_soft/buffer.sh 
+
+#!/bin/bash
+URL=http://192.168.4.5/index.html?
+for i in {1..5000}
+do
+    URL=${URL}v$i=$i
+done
+curl $URL                              //经过5000次循环后，生成一个长的URL地址栏
+[root@proxy ~]# ./buffer.sh
+.. ..
+<center><h1>414 Request-URI Too Large</h1></center>        //提示头部信息过大
+2）修改Nginx配置文件，增加数据包头部缓存大小
+vim /usr/local/nginx/conf/nginx.conf
+.. ..
+http {
+client_header_buffer_size    1k;          //默认请求包头信息的缓存    
+large_client_header_buffers  4 4k;        //大请求包头部信息的缓存个数与容量
+.. ..
+
+3) 重新加载配置
+4）优化后，使用脚本测试长头部请求是否能获得响应
+cat cat buffer.sh 
+#!/bin/bash
+URL=http://192.168.4.5/index.html?
+for i in {1..5000}
+do
+    URL=${URL}v$i=$i
+done
+curl $URL
+
+[root@proxy ~]# ./buffer.sh
+
+################################################################################
+步骤五：浏览器本地缓存静态数据
+
+1）使用Firefox浏览器查看缓存
+在Firefox地址栏内输入about:cache显示Firefox浏览器的缓存信息，点击List Cache Entries可以查看详细信息
+2）清空firefox本地缓存数据
+3）修改Nginx配置文件，定义对静态页面的缓存时间
+server {
+          ..
+}
+location ~* \.(jpg|jpeg|gif|png|css|js|ico|xml)$ {
+expires        30d;               //定义客户端缓存时间为30天
+}
+
+cp /usr/share/backgrounds/day.jpg /usr/local/nginx/html
+nginx -s reload
+4）优化后，使用Firefox浏览器访问图片，再次查看缓存信息
+  firefox http://192.168.4.5/day.jpg
+
+#############################################################################
+步骤六：日志切割
+
+1. 把旧的日志重命名
+2. kill USR1 PID(nginx的进程PID号)
+1）手动执行  (/usr/local/nginx/logs/nginx.pid文件中存放的是nginx的进程PID号)
+ mv  access.log    access2.log
+ kill -USR1 $(cat /usr/local/nginx/logs/nginx.pid)
+
+2）自动完成 (每周5的03点03分自动执行脚本完成日志切割工作)
+vim /usr/local/nginx/logbak.sh
+date=`date +%Y%m%d`
+aaa=/usr/local/nginx/logs
+mv   $aaa/access.log   $aaa/access-$date.log
+mv   $aaa/error.log    $aaa/error-$date.log
+kill -USR1  $(cat $aaa/nginx.pid)
+
+crontab -e
+03 03 * * 5  /usr/local/nginx/logbak.sh
+
+##############################################################################
+步骤七：对页面进行压缩处理
+
+修改Nginx配置文件
+http {
+.. ..
+gzip on;                              //开启压缩
+gzip_min_length 1000;                 //小文件不压缩
+gzip_comp_level 4;                    //压缩比率
+gzip_types text/plain text/css application/json application/x-javascript text/xml 
+application/xml application/xml+rss text/javascript;   对特定文件压缩，类型参考mime.types
+.. ..
+}
+
+###################################################################################
+步骤八：服务器内存缓存
+
+如果需要处理大量静态文件，可以将文件缓存在内存，下次访问会更快
+http { 
+open_file_cache    max=2000  inactive=20s;
+            open_file_cache_valid     60s;
+            open_file_cache_min_uses  5;
+            open_file_cache_errors    off;
+//设置服务器最大缓存2000个文件句柄，关闭20秒内无请求的文件句柄
+//文件句柄的有效时间是60秒，60秒后过期
+//只有访问次数超过5次会被缓存
+} 
+#####################################################################################
+######################################################################################
+######################################################################################
+PHP的本地Session信息   
+       Session：存储在服务器端，保存用户名、登陆状态等信息。
+       Cookies：由服务器下发给客户端，保存在客户端的一个文件里。
+         保存的内容主要包括：SessionID
+步骤一：部署后端LNMP服务器相关软件
+1）使用yum安装基础依赖包
+2）源码安装Nginx
+5）修改Nginx配置文件（修改默认首页与动静分离）
+  index  index.php  index.html   index.htm;
+  location  ~  \.php$  {
+            root           html;
+            fastcgi_pass   127.0.0.1:9000;
+            fastcgi_index  index.php;
+            include        fastcgi.conf;
+步骤二：启动LNMP服务器相关的服务
+       nginx        mariadb        php-fpm
+步骤三：部署前端Nginx调度服务器
+1）修改Nginx配置文件，实现代理服务器
+upstream webs  {
+             server 192.168.2.100:80;
+             server 192.168.2.200:80;
+           }
+server  {
+             listen       80;
+             server_name  localhost;
+location  /  {
+              proxy_pass http://webs;
+              root   html;
+              index  index.php index.html index.htm;
+2）重新加载配置文件
+步骤四：测试环境是否配置成功
+curl  http://192.168.4.5/index.html        //查看是否有数据
+步骤五：部署测试页面
+1）部署测试页面(Web1服务器
+cd  lnmp_soft/php_scripts/
+tar -xf php-memcached-demo.tar.gz
+cd php-memcached-demo
+cp -r  *  /usr/local/nginx/html/
+2）浏览器直接访问后端服务器的测试页面（Web1服务器）
+firefox http://192.168.2.100              //填写账户信息
+cd /var/lib/php/session/                  //查看服务器本地的Session信息
+ls
+sess_ahilcq9bguot0vqsjtd84k7244           //这里的ID是随机的
+cat   sess_ahilcq9bguot0vqsjtd84k7244
+
+可用修改index.php和home.php两个文件的内容，以区别后端两台不同的服务器:<body bgcolor=blue>
+3）部署测试页面(Web2服务器)同web1一样
+
+#################################################################################
+构建memcached服务
+
+步骤一：构建memcached服务（prxoy）
+1）使用yum安装软件包memcached
+2) memcached配置文件（查看即可，不需要修改）
+vim /usr/lib/systemd/system/memcached.service
+3）启动服务并查看网络连接状态验证是否开启成功
+systemctl  start  memcached
+netstat  -anptu  |  grep memcached
+步骤二：使用telnet访问memcached服务器
+1）使用yum安装telnet
+2) 使用telnet连接服务器测试memcached服务器功能，包括增、删、改、查等操作
+telnet  192.168.4.5  11211
+Trying 192.168.4.5...
+……
+##提示：0表示不压缩，180为数据缓存时间，3为需要存储的数据字节数量。
+set name 0 180 3               //定义变量，变量名称为name
+plj                            //输入变量的值，值为plj                
+STORED
+get name                       //获取变量的值
+VALUE name 0 3                 //输出结果
+plj
+END
+##提示：0表示不压缩，180为数据缓存时间，3为需要存储的数据字节数量。
+add myname 0 180 10            //新建，myname不存在则添加，存在则报错
+set myname 0 180 10            //添加或替换变量
+replace myname 0 180 10        //替换，如果myname不存在则报错
+get myname                     //读取变量
+append myname 0 180 10         //向变量中追加数据
+delete myname                  //删除变量
+flush_all                      //清空所有
+quit                           //退出登录  
+
+#################################################################################
+LNMP+memcached
+
+
+步骤一：创建PHP页面，使用PHP语言测试memcached服务
+1）部署测试页面
+vim /usr/local/nginx/html/mem.php
+<?php
+$memcache=new Memcache;                   //创建memcache对象
+$memcache->connect('192.168.2.5',11211) or die ('could not connect!!');
+$memcache->set('key','test');             //定义变量
+$get_values=$memcache->get('key');        //获取变量值
+echo $get_values;
+?>
+
+3）为PHP添加memcache扩展
+ yum -y install  php-pecl-memcache
+ systemctl restart php-fpm
+4) 客户端测试
+ firefox http://192.168.2.100/test.php
+
+#################################################################################
+PHP实现session共享
+
+步骤一：在后端LNMP服务器上部署Session共享(web1,web2)
+1）为PHP添加memcache扩展
+yum -y install  php-pecl-memcache
+2）修改PHP-FPM配置文件，并重启服务
+vim  /etc/php-fpm.d/www.conf           
+
+php_value[session.save_handler] = memcache
+php_value[session.save_path] = "tcp://192.168.2.5:11211"
+//定义Session信息存储在公共的memcached服务器上，主机参数中为memcache（没有d）
+//通过path参数定义公共的memcached服务器在哪（服务器的IP和端口）
+
+systemctl  restart  php-fpm
+
+###################################################################################
+###################################################################################
+###################################################################################
+安装部署Tomcat服务器
+服务器（192.168.2.100) 客户机（192.168.2.5）
+
+步骤一：部署Tomcat服务器软件(192.168.2.100/24)
+1）使用RPM安装JDK环境
+ yum -y install  java-1.8.0-openjdk   java-1.8.0-openjdk-headless 
+ java -version             //查看JAVA版本
+2）安装Tomcat（apache-tomcat-8.0.30.tar.gz软件包，在lnmp_soft中有提供）
+ tar -xf  apache-tomcat-8.0.30.tar.gz
+ mv apache-tomcat-8.0.30  /usr/local/tomcat
+ ls /usr/local/tomcat
+bin/                         //主程序目录
+lib/                         //库文件目录
+logs/                        //日志目录  
+temp/                        //临时目录
+work/                        //自动编译目录jsp代码转换servlet
+conf/                        //配置文件目录
+webapps/                     //页面目录
+3）启动服务
+/usr/local/tomcat/bin/startup.sh
+4）服务器验证端口信息
+netstat -nutlp |grep java    //查看java监听的端口
+
+提示：如果检查端口时，8005端口启动非常慢，可用使用下面的命令用urandom替换random
+ mv    /dev/random   /dev/random.bak
+ ln -s /dev/urandom  /dev/random
+5）客户端浏览测试页面(proxy作为客户端)
+ firefox http://192.168.2.100:8080
+步骤二：修改Tomcat配置文件
+1）创建测试JSP页面
+ vim  /usr/local/tomcat/webapps/ROOT/test.jsp
+<html>
+<body>
+<center>
+Now time is: <%=new java.util.Date()%>            //显示服务器当前时间
+</center>
+</body>
+</html>
+步骤三：验证测试
+1）服务器验证端口信息
+netstat -nutlp |grep java            //查看java监听的端口
+mv    /dev/random   /dev/random.bak
+ln -s /dev/urandom  /dev/random
+2）客户端浏览测试页面(proxy充当客户端角色)
+firefox http://192.168.2.100:8080
+firefox http://192.168.2.100:8080/test.jsp
+
+################################################################################
+使用Tomcat部署虚拟主机
+
+步骤一：配置服务器虚拟主机
+1）修改server.xml配置文件，创建虚拟主机
+vim /usr/local/tomcat/conf/server.xml
+<Host name="www.a.com" appBase="a" unpackWARS="true" autoDeploy="true">
+</Host>
+<Host name="www.b.com" appBase="b" unpackWARS="true" autoDeploy="true">
+</Host>
+2）创建虚拟主机对应的页面根路径
+mkdir -p  /usr/local/tomcat/{a,b}/ROOT
+echo "AAA"   > /usr/local/tomcat/a/ROOT/index.html
+echo "BBB"   > /usr/local/tomcat/b/ROOT/index.html
+3）重启Tomcat服务器
+/usr/local/tomcat/bin/shutdown.sh
+/usr/local/tomcat/bin/startup.sh
+4）客户端设置host文件，并浏览测试页面进行测试(proxy充当客户端角色)
+vim /etc/hosts
+192.168.2.100      www.a.com  www.b.com
+ firefox http://www.a.com:8080/
+ firefox http://www.b.com:8080/
+
+步骤二：修改www.b.com网站的首页目录为base
+1）使用docBase参数可以修改默认网站首页路径
+vim /usr/local/tomcat/conf/server.xml
+<Host name="www.b.com" appBase="b" unpackWARS="true" autoDeploy="true">
+<Context path="" docBase="base"/>
+</Host>
+
+mkdir  /usr/local/tomcat/b/base
+echo "BASE" > /usr/local/tomcat/b/base/index.html
+/usr/local/tomcat/bin/shutdown.sh
+/usr/local/tomcat/bin/startup.sh
+2）测试查看页面是否正确(proxy充当客户端角色)
+firefox  http://www.b.com:8080/
+
+步骤三：跳转
+1）当用户访问http://www.a.com/test打开/var/www/html目录下的页面
+ vim /usr/local/tomcat/conf/server.xml
+<Host name="www.a.com" appBase="a" unpackWARS="true" autoDeploy="true">
+<Context path="/test" docBase="/var/www/html/" />
+</Host>
+
+echo "Test" > /var/www/html/index.html
+/usr/local/tomcat/bin/shutdown.sh
+/usr/local/tomcat/bin/startup.sh
+2）测试查看页面是否正确(proxy充当客户端角色)
+firefox http://www.a.com:8080/test
+
+步骤四：配置Tomcat支持SSL加密网站
+1）创建加密用的私钥和证书文件
+keytool -genkeypair -alias tomcat -keyalg RSA -keystore /usr/local/tomcat/keystore
+//-genkeypair       生成密钥对
+//-alias tomcat     密钥别名
+//-keyalg RSA       定义密钥算法为RSA算法
+//-keystore         定义密钥文件存储在:/usr/local/tomcat/keystore
+2)再次修改server.xml配置文件，创建支持加密连接的Connector
+<Connector port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
+maxThreads="150" SSLEnabled="true" scheme="https" secure="true"
+keystoreFile="/usr/local/tomcat/keystore" keystorePass="123456" 
+clientAuth="false" sslProtocol="TLS" />
+//备注，默认这段Connector被注释掉了，打开注释，添加密钥信息即可
+3）重启Tomcat服务器
+ /usr/local/tomcat/bin/shutdown.sh
+ /usr/local/tomcat/bin/startup.sh
+4）客户端设置host文件，并浏览测试页面进行测试(proxy充当客户端角色)
+firefox https://www.b.com:8443/
+firefox https://192.168.2.100:8443/
+
+步骤五：配置Tomcat日志
+1)为每个虚拟主机设置不同的日志文件
+ vim /usr/local/tomcat/conf/server.xml
+<Host name="www.a.com" appBase="a" unpackWARS="true" autoDeploy="true">
+<Context path="/test" docBase="/var/www/html/" />
+#从默认localhost虚拟主机中把Valve这段复制过来，适当修改下即可
+<Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
+               prefix=" a_access" suffix=".txt"
+               pattern="%h %l %u %t &quot;%r&quot; %s %b" />
+</Host>
+<Host name="www.b.com" appBase="b" unpackWARS="true" autoDeploy="true">
+<Context path="" docBase="base" />
+<Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
+               prefix=" b_access" suffix=".txt"
+               pattern="%h %l %u %t &quot;%r&quot; %s %b" />
+</Host>
+2）重启Tomcat服务器
+/usr/local/tomcat/bin/shutdown.sh
+/usr/local/tomcat/bin/startup.sh
+3）查看服务器日志文件
+ls /usr/local/tomcat/logs/
+
+步骤六：扩展实验(配置Tomcat集群)
+1) 在192.168.4.5主机上配置Nginx调度器
+vim   /usr/local/nginx/conf/nginx.conf
+http{
+    upstream toms {
+        server 192.168.2.100:8080;
+        server 192.168.2.200:8080;
+    }
+   server  {
+           listen 80;
+           server_name localhost;
+   location / {
+            proxy_pass  http://toms;
+    } 
+  }
+}
+2) 在192.168.2.100和192.168.2.200主机上配置Tomcat调度器
+以下以Web1为例：
+yum -y install  java-1.8.0-openjdk   java-1.8.0-openjdk-headless
+tar -xzf  apache-tomcat-8.0.30.tar.gz
+mv apache-tomcat-8.0.30  /usr/local/tomcat
+3）启动服务
+/usr/local/tomcat/bin/startup.sh
+4) 客户端验证
+为了防止有数据缓存，可以使用真实主机的google-chrome访问代理服务器，输入Ctrl+F5刷新页面
+
+###################################################################################
+使用Varnish加速Web
+
+步骤一：构建Web服务器
+1）使用yum安装web软件包
+2）启用httpd服务（注意需要关闭nginx，否则端口冲突）
+3）为Web访问建立测试文件
+在网站根目录/var/www/html下创建一个名为index.html的首页文件
+4）测试页面是否正常（代理服务器测试后台web）
+
+步骤二：部署Varnish缓存服务器(192.168.4.5)
+1）编译安装软件
+yum -y install  gcc readline-devel  ncurses-devel  pcre-devel  python-docutils
+useradd -s /sbin/nologin varnish
+tar -xf varnish-5.2.1.tar.gz
+cd varnish-5.2.1
+./configure
+make && make install
+2）复制启动脚本及配置文件
+cp  etc/example.vcl   /usr/local/etc/default.vcl
+3）修改代理配置文件
+vim  /usr/local/etc/default.vcl
+backend default {
+     .host = "192.168.2.100";
+     .port = "80";
+ }
+4）启动服务
+varnishd  -f /usr/local/etc/default.vcl
+//varnishd命令的其他选项说明如下：
+//varnishd -s malloc,128M        定义varnish使用内存作为缓存，空间为128M
+//varnishd -s file,/var/lib/varnish_storage.bin,1G 定义varnish使用文件作为缓存
+
+步骤三：客户端测试
+curl http://192.168.4.5
+步骤四：其他操作
+1）查看varnish日志
+ varnishlog                     //varnish日志
+ varnishncsa                    //访问日志
+2）更新缓存数据，在后台web服务器更新页面内容后，用户访问代理服务器看到的还是之前的数据，
+   说明缓存中的数据过期了需要更新（默认也会自动更新，但非实时更新）
+varnishadm  
+varnish> ban req.url ~ .*
+//清空缓存数据，支持正则表达式
+
+##########################################################################################
+##########################################################################################
+##########################################################################################
+clone       将远程服务器的仓库克隆到本地
+config      修改git配置
+add         添加修改到暂存区
+commit      提交修改到本的仓库
+push        提交修改到远程服务器
+
+Git基本操作
+
+步骤一：部署Git服务器（web1作为远程git服务器）
+1）安装Git软件
+yum -y install git
+git --version             查看版本
+2) 初始化一个空仓库
+mkdir     /var/git
+git init  --bare  /var/git/aaa  
+ls  /var/git/aaa
+
+步骤二：客户端测试(web2作为客户端主机)
+1) clone克隆服务器仓库到本地
+yum -y install git
+git clone root@192.168.2.100:/var/git/aaa
+cd  aaa
+2) 修改git配置(可以忽略)
+git config --global user.email "you@example.com"
+git config --global user.name "Your Name"
+git config --global push.default simple
+
+echo  AAAA > a.txt        本地工作区对数据进行增删改查
+git status                查看仓库中数据的状态
+git add .                 将工作区的修改提交到暂存区
+git commit  -m  "注释"      将暂存区修改提交到本地仓库
+git push                  将本地仓库中的数据推送到远程服务器(web2将数据推送到web1)
+git pull                  将服务器上的数据更新到本地（web1的数据更新到web2）
+git log --oneline         查看版本日志
+git reflog                查看版本历史
+git reset --hard 301c0    移动HEAD指针，将数据还原到任意版本
+git branch -v             查看当前分支
+git branch  hotfix        创建分支
+git checkout hotfix       切换分支
+git merge hotfix          合并到master分支
+
+#####################################################################################
+Git服务器
+
+步骤一：SSH协议服务器（支持读写操作）
+1）创建基于密码验证的SSH协议服务器（web1主机操作）
+ git init --bare /var/git/base_ssh
+2)客户端访问的方式（web2主机操作）
+git clone root@192.168.2.100:/var/git/base_ssh
+rm -rf base_ssh
+3）客户端生成SSH密钥，实现免密码登陆git服务器（web2主机操作）
+ssh-keygen -f  /root/.ssh/id_rsa  -N ''
+ssh-copy-id  192.168.2.100
+git clone root@192.168.2.100:/var/git
+git push
+
+步骤二：Git协议服务器（只读操作的服务器）
+
+1）安装git-daemon软件包（web1主机操作）
+2）创建版本库（web1主机操作）
+git init --bare /var/git/base_git
+3）修改配置文件，启动git服务（web1主机操作）
+vim /usr/lib/systemd/system/git@.service
+....--base-path=/var/git....
+
+systemctl  start  git.socket
+4）客户端访问方式（web2主机操作）
+git clone git://192.168.2.100/base_git
+
+步骤三：HTTP协议服务器（只读操作的服务器）
+1）安装gitweb、httpd软件包（web1主机操作）
+2）修改配置文件，设置仓库根目录（web1主机操作）
+vim +11 /etc/gitweb.conf 
+$projectroot = "/var/git";                 #添加一行
+3) 创建版本仓库（web1主机操作）
+git init --bare  /var/git/base_http
+4）启动httpd服务器
+5）客户端访问方式（web2主机操作）
+  firefox http://192.168.2.100/git/
+
+##########################################################################################
+制作nginx的RPM包
+
+步骤一：安装rpm-build软件(web1)
+1）安装rpm-build软件包
+2）生成rpmbuild目录结构
+rpmbuild -ba nginx.spec                //会报错，没有文件或目录
+ls /root/rpmbuild                      //自动生成的目录结构
+3）准备工作，将源码软件复制到SOURCES目录
+cp  nginx-1.12.2.tar.gz    /root/rpmbuild/SOURCES/
+4）创建并修改SPEC配置文件
+vim /root/rpmbuild/SPECS/nginx.spec 
+Name:nginx                                   #源码包软件名称
+Version:1.12.2                               #源码包软件的版本号
+Release: 10                                  #制作的RPM包版本号
+Summary: Nginx is a web server software.     #RPM软件的概述    
+License:GPL                                  #软件的协议
+URL:    www.test.com                         #网址
+Source0:nginx-1.12.2.tar.gz                  #源码包文件的全称
+#BuildRequires:                              #制作RPM时的依赖关系
+#Requires:                                   #安装RPM时的依赖关系
+%description
+nginx [engine x] is an HTTP and reverse proxy server.    #软件的详细描述
+
+%post
+useradd nginx                                #非必需操作：安装后脚本(创建账户)
+
+%prep
+%setup -q                                    #自动解压源码包，并cd进入目录
+
+%build
+./configure
+make %{?_smp_mflags}
+
+%install
+make install DESTDIR=%{buildroot}
+
+%files
+%doc
+/usr/local/nginx/*                           #对哪些文件与目录打包
+%changelog
+
+步骤二：使用配置文件创建RPM包(web1)
+1）安装依赖软件包
+yum -y install  gcc  pcre-devel openssl-devel
+2）rpmbuild创建RPM软件包
+rpmbuild -ba /root/rpmbuild/SPECS/nginx.spec
+ls  /root/rpmbuild/RPMS/x86_64/nginx-1.12.2-10.x86_64.rpm
+步骤三：安装
+yum  -y  install    nginx-1.12.2-10.x86_64.rpm
+
+########################################################################################
+########################################################################################
+########################################################################################
+配置GRE VPN
+
+准备环境
+client    eth3  201.1.2.10/24
+proxy     eth0  192.168.4.5/24
+          eth3  201.1.2.5/24
+
+步骤一：Client主机创建VPN隧道
+lsmod                    显示模块列表
+lsmod  | grep ip_gre     确定是否加载了gre模块
+modprobe  ip_gre         加载模块
+modinfo   ip_gre         查看模块信息
+
+1）创建隧道
+ip tunnel add tun0  mode gre  remote 201.1.2.5 local 201.1.2.10
+//ip tunnel add创建隧道（隧道名称为tun0），ip tunnel help可以查看帮助
+//mode设置隧道使用gre模式
+//local后面跟本机的IP地址，remote后面是与其他主机建立隧道的对方IP地址
+
+2）启用该隧道（类似与设置网卡up）
+ip link set tun0 up         //设置UP
+ip link show
+
+3）为VPN配置隧道IP地址
+ip addr add 10.10.10.10/24 peer 10.10.10.5/24  dev tun0
+//为隧道tun0设置本地IP地址（10.10.10.10.10/24）
+//隧道对面的主机IP的隧道IP为10.10.10.5/24
+ ip a s                      //查看IP地址
+
+4）关闭防火墙
+
+步骤二：Proxy主机创建VPN隧道
+
+lsmod                    显示模块列表
+lsmod  | grep ip_gre     确定是否加载了gre模块
+modprobe  ip_gre         加载模块
+modinfo   ip_gre         查看模块信息
+
+1）创建隧道
+ip tunnel add tun0  mode gre remote 201.1.2.10 local 201.1.2.5
+//ip tunnel add创建隧道（隧道名称为tun0），ip tunnel help可以查看帮助
+//mode设置隧道使用gre模式
+//local后面跟本机的IP地址，remote后面是与其他主机建立隧道的对方IP地址
+2）启用该隧道
+  ip link set tun0 up         //设置UP
+  ip link show
+3）为VPN配置隧道IP地址
+ip addr add 10.10.10.5/24 peer 10.10.10.10/24 dev tun0
+//为隧道tun0设置本地IP地址（10.10.10.10.5/24）
+//隧道对面的主机IP的隧道IP为10.10.10.10/24
+ip a s                      //查看IP地址
+4）开启路由转发、关闭防火墙
+  echo "1" > /proc/sys/net/ipv4/ip_forward
+7)测试连通性
+[root@client ~]#  ping 10.10.10.5
+[root@proxy ~]#   ping 10.10.10.10
+
+######################################################################################
+创建PPTP VPN
+
+准备网络
+windows        public2  201.1.2.20/24
+proxy          eth0     192.168.4.5/24
+               eth3     201.1.2.5/24
+
+步骤一：部署VPN服务器
+1）安装软件包     pptpd-1.4.0-2.el7.x86_64.rpm
+2) 修改配置文件
+  vim /etc/pptpd.conf
+  .. ..
+  localip 201.1.2.5                           //服务器本地IP
+  remoteip 192.168.3.1-50                     //分配给客户端的IP池
+
+  vim /etc/ppp/options.pptpd
+  require-mppe-128                            //使用MPPE加密数据
+  ms-dns 8.8.8.8                              //DNS服务器
+
+  vim /etc/ppp/chap-secrets                   //修改账户配置文件
+  jacob      *      123456    *               //用户名   服务器标记   密码   客户端
+
+  echo "1" > /proc/sys/net/ipv4/ip_forward    //开启路由转发
+3）启动服务  pptpd
+4）翻墙设置（非必需操作）
+iptables -t nat -A POSTROUTING -s 192.168.3.0/24  -j SNAT --to-source 201.1.2.5
+
+步骤二：客户端设置
+
+#######################################################################################
+创建L2TP+IPSec VPN
+
+准备网络
+windows        public2  201.1.2.20/24
+client         eth0     192.168.4.10/24
+               eth3     201.1.2.10/24
+
+步骤一：部署IPSec服务
+1）安装软件包
+yum -y install libreswan
+2)新建IPSec密钥验证配置文件
+ vim /etc/ipsec.d/*.conf      新建该文件，参考lnmp_soft/vpn/myipsec.conf  
+3)创建IPSec预定义共享密钥
+ vim /etc/ipsec.d/*.secrets
+201.1.2.10   %any:    PSK    "randpass"        #randpass为预共享密钥
+                                                             #201.1.2.10是VPN服务器的IP
+4)启动服务  ipsec
+ netstat -ntulp |grep pluto
+
+步骤二：部署XL2TP服务
+1）安装软件包
+yum localinstall xl2tpd-1.3.8-2.el7.x86_64.rpm
+2) 修改xl2tp配置文件（修改3个配置文件的内容）
+
+ vim  /etc/xl2tpd/xl2tpd.conf                //修改主配置文件
+ ip range = 192.168.3.128-192.168.3.254      //分配给客户端的IP池
+ local ip = 201.1.2.10                       //VPN服务器的IP地址
+
+ vim /etc/ppp/options.xl2tpd                 //认证配置
+ require-mschap-v2                           //添加一行，强制要求认证
+ #crtscts                                    //注释或删除该行
+ #lock                                       //注释或删除该行
+
+ vim /etc/ppp/chap-secrets                   //修改密码文件
+ jacob   *       123456  *                   //账户名称   服务器标记   密码   客户端IP
+
+3）启动服务  xl2tpd
+netstat  -ntulp |grep xl2tpd 
+4）设置路由转发，防火墙
+echo "1" > /proc/sys/net/ipv4/ip_forward
+5）翻墙设置（非必需操作）
+iptables -t nat -A POSTROUTING -s 192.168.3.0/24  -j SNAT --to-source 201.1.2.10
+
+步骤二：客户端设置
+
+设置Windows注册表（不修改注册表，连接VPN默认会报789错误），具体操作如下：
+单击"开始"，单击"运行"，键入"regedit"，然后单击"确定"
+找到下面的注册表子项，然后单击它：
+HKEY_LOCAL_MACHINE\ System\CurrentControlSet\Services\Rasman\Parameters
+在"编辑"菜单上，单击"新建"->"DWORD值"
+在"名称"框中，键入"ProhibitIpSec"
+在"数值数据"框中，键入"1"，然后单击"确定"
+退出注册表编辑器，然后重新启动计算机
+连接VPN并测试网络连通性
+
+######################################################################################
+NTP时间同步
+
+准备环境
+client    eth0  192.168.4.10/24
+proxy     eth0  192.168.4.5/24
+          eth1  192.168.2.5/24
+
+步骤一：部署NTP服务(proxy)
+1）安装软件包   chrony
+2) 修改配置文件
+  vim /etc/chrony.conf
+server 0.centos.pool.ntp.org iburst      //server用户客户端指向上层NTP服务器
+allow 192.168.4.0/24                     //允许那个IP或网络访问NTP
+#deny  192.168.4.1                       //拒绝那个IP或网络访问NTP
+local stratum 10                         //设置NTP服务器的层数量
+4)启动NTP服务
+systemctl  restart  chronyd
+systemctl  enable  chronyd
+
+步骤二：配置客户端(client)
+1）安装软件包
+yum -y install chrony
+2) 修改配置文件
+vim /etc/chrony.conf
+server 192.168.4.5 iburst                //设置与哪台服务器同步数据
+3) 将客户端时间修改为错误的时间
+date  -s  "hour:minute"                  //调整时间（小时：分钟）
+date
+4) 重启chrony与服务器同步时间
+5) 确认时间是否已经同步
+
+######################################################################################
+######################################################################################
+######################################################################################
