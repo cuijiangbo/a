@@ -1,0 +1,767 @@
+Linux之父  林纳斯.托瓦斯  1991年创办    unix  1970.1.1
+
+         80     http:超文本传输协议
+         443    https:安全超文本传输协议
+         53     DNS:域名解析协议
+         21     FTP:文件传输协议
+         23     telnet:远程管理协议
+         25     SMTP:邮件协议(用户发邮件协议)
+         110    pop3:邮件协议(用户收邮件协议)
+         69     TFTP:简单文件传输协议
+         161    SNMP:简单的网络管理协议
+         3306   mysql:数据库端口
+         22     ssh远程控制端口
+#######################################################################################
+#######################################################################################
+常见一级目录的用途
+	/boot               存放系统引导必需的文件,包括内核、启动配置
+	/bin、/sbin         存放各种命令程序
+	/dev                存放硬盘、键盘、鼠标、光驱等各种设备文件
+	/etc                存放Linux系统及各种程序的配置文件
+	/root、/home/用户名   分别是管理员root、普通用户的默认家目录
+	/var                存放日志文件、邮箱目录等经常变化的文件
+	/proc               存放内存中的映射数据,不占用磁盘
+	/tmp                存放系统运行过程中使用的一些临时文件
+
+######################################################################################
+######################################################################################
+######################################################################################       
+用户基本信息                   /etc/passwd 
+用户密码信息                   /etc/shadow 
+组基本信息                     /etc/group 
+组成员信息                     /etc/gshadow
+网卡配置文件                  /etc/sysconfig/network-scripts/ifcfg-eth0
+主机名永久配置文件            /etc/hostname
+所有用户永久设置别名文件      /etc/bashrc
+root用户永久设置别名文件     /root/.bashrc
+开机自动挂载配置文件          /etc/fstab
+DNS配置文件                   /etc/resolv.conf
+YUM客户端配置文件             /etc/yum.repos.d/*.repo
+防火墙配置文件                 /etc/selinux/config
+ 
+FTP默认共享路径               /var/ftp
+NTP时间同步配置文件           /etc/chrony.conf
+cron计划任务配置文件          /etc/crontab
+SELinux永久配置文件          /etc/selinux/config  
+Samba服务端配置文件          /etc/samba/smb.conf           (软件包samba)
+Samba客户端共享软件包　　    samba-client　　　　　　　　    (挂载软件包cifs-utils)
+NFS服务端配置文件             /etc/exports　　　　　         (软件包nfs-utils)
+postfix邮件配置文件　　     /etc/postfix/main.cf          (软件包postfix)
+ISCSI服务端软件包　　　      targetcli　
+ISCSI客户端配置文件　　　   /etc/iscsi/initiatorname.iscsi(软件包iscsi-initiator-utils)　
+数据库主配置文件　　　　     /etc/my.cnf                    (软件包mariadb-server)
+Web存放网页文件的路径　      /var/www/html
+Web默认网页文件的名字        index.html
+域名web配置文件              /etc/httpd/conf/httpd.conf
+域名虚拟web配置文件          /etc/httpd/conf.d/*.conf      (python解释软件包mod_wsgi)
+安全Web服务器配置文件        /etc/httpd/conf.d/ssl.conf    (web加密软件包mod_ssl)
+dhcp配置文件                 /etc/dhcp/dhcpd.conf
+
+
+
+###########################################################################
+hd,表示IDE设备              /dev/hdc   IDE接口
+sd,表示SCSI设备             /dev/sr0   SCSI接口
+vd,表示虚拟设备
+LANG=en　　　　             当前系统语言修改英文
+ls -l /dev/cdrom           显示磁盘详细信息
+cat  /proc/meminfo         真机查看检查内存大小、空闲情况
+nmcli connection show      查询识别的网卡名称
+date -s                    修改时间（'年-月-日  时：分：秒'）
+lscpu | grep vmx           查看CPU是否支持虚拟化(vmx)
+du -h                      查看大小
+wc -l                      统计行数
+
+###########################################################################
+进程管理
+systemd:上帝进程,所有进程的父进程
+pstree lisi      查看lisi用户开启的进程
+pstree -ap lisi  -a:显示完整的命令行   -p:列出对应PID编号
+用户 进程ID %CPU %内存 虚拟内存 固定内存 终端 状态 起始时间 CPU时间 程序指令
+ps aux           列出正在运行的所有进程
+ps -elf          列出正在运行的所有进程,可以显示该进程的父进程的PID
+PPID:父进程的PID号
+
+##########################################################################
+进程动态排名
+top -d 刷新秒数 -U 用户名   
+  P(大写)进行CPU排序
+  M(大写)进行内存排序
+
+##########################################################################
+检索进程
+用途:pgrep [选项]... 查询条件            
+-l:输出进程名,而不仅仅是 PID
+-U:检索指定用户的进程
+-x:精确匹配完整的进程名
+pgrep -l log  
+pgrep -lU lisi
+pstree -ap lisi
+
+#########################################################################
+进程的前后台调度
+jobs -l                  #查看后台任务列表
+fg                       #将后台任务恢复到前台运行
+bg                       #激活后台被挂起的任务
+bg 2                     #将后台编号为2的进程,继续运行 
+fg 1                     #将后台编号为1的进程,恢复到前台运行
+Ctrl + z                 #暂停并转入后台
+sleep 1000 &             #将进程正在运行放入后台
+
+###########################################################################
+干掉进程的不同方法
+kill    [-9]        PID
+killall [-9]        进程名
+pkill               查找条件
+killall -9 -u lisi  强制踢出一个用户
+
+############################################################################
+grep常用的匹配模式
+-v          取反匹配
+-i          忽略大小写
+word　      包含字符串word
+^word 　    以字符串word开头
+word$ 　    以字符串word结尾
+  *            任意多个任意字符
+  ?            单个字符
+【0-9】        多个字符或连续范围中的一个
+{a,min,}    多组不同的字符串,全匹配 
+
+###########################################################################
+find高级使用
+find  目录   条件1  条件2
+
+常用条件表示:
+-type       类型(l快捷方式、d目录、f文本文件)
+-name      '文档名称'(find /etc/  -name 'passwd') 
+-iname      忽略大小写(find /etc -iname 'PASSWD')
+-size       文件大小(k、M、G)(find /boot/  -size  +10M)
+-user       用户名(find /home -user  student)
+-mtime      根据文件修改时间(find /var/ -mtime +90)(90天以前)
+-group      根据所属组(find /home/ -group 'student')
+-maxdepth   限制目录查找的深度(最大层数)(find /etc/ -maxdepth 1 -name '*.conf')
+find扩展使用                     find .. .. -exec 处理命令 {} \;
+############################################################################
+管理用户和组  
+root  :    x     :   0  :     0     :    root    : /root: /bin/bash
+用户名  : 密码占位符 :  UID  : 基本组的GID : 用户描述信息 : 家目录 :   解释器
+
+useradd        创建用户
+-u   用户id
+-d   家目录路径
+-s   登录解释器(/sbin/nologin：禁止用户登录系统的解释器)
+-G   附加组
+
+usermod        修改用户信息
+-u   用户id
+-d   家目录路径
+-s   登录解释器(/sbin/nologin：禁止用户登录系统的解释器)
+-G   附加组
+
+userdel        删除用户
+-r             连同家目录一并删除
+echo '密码'    |   passwd 　--stdin　 用户名        非交互式设置密码
+
+#########################################################################
+管理组账号
+stugrp :             x           :      1610       :
+  组名   : 组的密码占位符 : 组的GID编号 : 组的成员列表
+
+groupadd                  创建组
+groupmod                  修改组属性
+groupdel                  删除组
+gpasswd -a 用户名 组名       添加用户到组
+gpasswd -d 用户名 组名       删除用户所在组
+groupmod [-g 组ID] [-n 新组名]   组名
+
+########################################################################
+设置acl访问控制策略
+使用 getfacl、setfacl 命令
+getfacl   查看ACL策略信息...
+setfacl  -m u:用户名:权限类别    文档
+setfacl  -m g:组名:权限类别      文档...
+setfacl  -b 文档...              删除所有ACL策略
+setfacl  -x u:用户名   文档      删除单条指定ACL策略
+
+########################################################################
+查看权限                      Permission denied:权限不足
+以 d 开头为目录
+以 l 开头为快捷方式
+以 -  开头为文本文件
+权限的数值表示
+基本权限:        r = 4      w = 2         x = 1
+附加权限:      SUID = 4   SGID = 2    Sticky Bit = 1
+
+chmod         设置基本权限
+chown         设置文档归属
+chmod u+s     可以让使用者具有文件属主的身份及部分权限      Set UID
+chmod g+s     使目录下新增的文档自动设置与父目录相同的属组  Set GID
+chmod o+t     附加在其他人的 x 位上(禁止操作别人的文档）    Sticky Bit
+
+实现lisi用户可以读取/etc/shadow文件内容，您有几种办法?
+1.修改其他人权限　　
+         chmod  o+r  /etc/shadow
+2.利用所属组
+         chown :lisi /etc/shadow
+         chmod  g+r  /etc/shadow
+3.利用所有者
+         chown  lisi /etc/shadow
+         chmod  u+r  /etc/shadow
+4.利用ACL策略
+         setfacl -m  u:lisi:r  /etc/shadow
+
+######################################################################
+tar备份与恢复
+-c          创建tar包
+-x          释放tar包
+-f          指定tar包文件名称
+-t          显示tar包的文件清单
+-C(大写)     指定释放路径
+-z ------->.gz
+-j ------->.bz2
+-J ------->.xz
+tar -tf     查看包里面内容
+tar -xf     释放包里面内容
+
+####################################################################
+zip归档工具,跨平台的压缩工具
+压缩：  zip -r   /root/test.zip   /home/  /mnt/ 
+解压缩：unzip    /root/test.zip    -d   /opt
+
+######################################################################       
+历史命令
+history     查看历史命令列表
+-c          清空历史命令
+!cat        执行最近一次以cat开头的历史命令
+vim /etc/profile   调整历史命令的数量
+HISTSIZE=1000      默认记录1000条
+
+####################################################################
+软连接与硬连接，快捷方式
+
+若原始文件或目录被删除,连接文件将失效,软连接可存放在不同分区/文件系统
+若原始文件被删除,连接文件仍可用,硬连接与原始文件必须在同一分区/文件系统
+echo 123 > /opt/A
+ln -s  /opt/A   /opt/B       软连接
+ln     /opt/A   /opt/C       硬连接
+ls -i  /opt/
+
+####################################################################
+vim命令快捷键
+
+命令模式:
+去首部（gg）            去尾部(G)
+复制行（yy)             粘贴到当前行之后(p)
+删除行(dd)
+删除单个字符（x或Delete）
+删除到行首（d^）         删除到行尾（d$）
+删除光标之后(大写的C)
+查找关键词： 搜索  /n
+撤销上一次操作(u)
+保存修改并退出(ZZ大写)
+
+vim末行模式:
+:set   nu|nonu       显示/不显示行号
+:set   ai|noai       启用/关闭自动缩进
+:r /etc/password     读入其他文件内容
+字符串替换
+:s/root/admin        替换光标所在行第一个“root”
+:s/root/admin/g      替换光标所在行所有的“root”
+:1,10s/root/admin/g  替换第1-10行所有的“root”
+:%s/root/admin/g     替换文件内所有的“root
+
+##################################################################
+下载软件包
+wget 软件包的URL网址 　-O(大写) 　/目录路径/新文件名
+
+rpm -ql                                        查看软件安装的路径内容
+rpm -q   软件名                            查询该软件是否已经安装
+rpm -qa                                       显示所有已安装
+rpm -ivh 软件名-版本信息.rpm　 安装软件包
+rpm -e   软件名　　　                  卸载软件
+
+##################################################################
+Yum
+客户端配置文件  /etc/yum.repos.d/*.repo
+[nsd1903]　　　　　仓库标识　　
+name=rhel7　　　   仓库描述信息
+enabled=1　　　　  本文件是否生效
+gpgcheck=0　　　   不检测软件包的签名
+baseurl=http://classroom.example.com/content/rhel7.0/x86_64/dvd     指定Yum服务端在哪里
+
+yum repolist             列出仓库信息
+yum -y install           安装软件包
+yum -y remove        卸载软件包
+yum clean all　  　   清空缓存
+
+####################################################################
+分区规划总结
+1.识别硬盘　             lsblk
+2.分区规划                fdisk
+3.刷新分区表　         partprobe
+4.进行格式化　         mkfs.xfs  mkfs.ext4   
+5.查看文件系统类型   blkid
+6.挂载使用　             mount          /etc/fstab开机自动挂载   mount -a 
+7.显示磁盘信息          df -h
+配置文件 /etc/fstab 的记录格式
+设备路径    挂载点         类型       参数      备份标记     检测顺序
+
+################################################################################
+################################################################################
+parted(分区工具)   支持大容量（18EB）,gpt分区模式可以有128个主分区
+
+ parted  /dev/vdb
+(parted) mktable gpt                      #指定分区的模式
+(parted) print                            #输出所有分区信息
+(parted) unit GB                          #设置显示单位
+(parted) mkpart                           #划分新的分区
+(parted) quit                             #退出
+
+######################################################################################
+#######################################################################################
+交换空间: 缓解真实物理内存的压力,由硬盘的空间来组成
+
+mkswap /dev/vdb1                      #格式化交换分区
+swapon  /dev/vdb1                     #启用交换分区
+swapon  -s                            #查看交换空间的成员
+swapoff  /dev/vdb1                    #停用交换分区
+实现开机自动启用交换分区
+/dev/vdb1  swap   swap  defaults 0 0
+swapon -a                             #自动检测/etc/fstab文件swap分区
+
+####################################################################
+LVM逻辑卷        display显示      create创建      extend扩展        remove删除
+       物理卷PV     卷组VG     逻辑卷LV
+
+vgdisplay  卷组名                 显示卷组详细信息
+vgchange -s 1M   卷组名     修改卷组PE的大小
+
+创建卷组的时候设置PE大小
+vgcreate -s PE大小   卷组名    空闲分区
+创建逻辑卷的时候指定PE个数
+lvcreate  -l  PE个数  -n 逻辑卷名 卷组名
+
+逻辑卷的制作
+
+创建卷组
+vgcreate   卷组名   设备路径........
+扩展卷组的空间
+vgextend   卷组名   设备路径........
+
+创建逻辑卷
+lvcreate -n 逻辑卷名字   -L 逻辑卷大小   卷组名
+扩展逻辑卷大小
+lvextend -L 逻辑卷大小   逻辑卷路径
+
+逻辑卷的使用                                                    
+格式化文件系统,进行挂载
+###########################################################################
+逻辑卷的扩展
+一 卷组有足够的剩余空间
+1.扩展逻辑卷空间的大小
+2.扩展逻辑卷文件系统的大小
+   扩展ext4: resize2fs     逻辑卷路径
+   扩展xfs:   xfs_growfs  逻辑卷路径
+
+二 卷组没有足够的剩余空间
+1.扩展卷组的空间
+2.扩展逻辑卷空间的大小
+3.扩展逻辑卷文件系统的大小
+
+############################################################################
+NTP时间同步
+1.安装chrony软件包
+2.修改配置文件/etc/chrony.conf
+   server classroom.example.com iburst
+3.重启服务
+systemctl restart chronyd    #重新启动
+systemctl enable chronyd     #开机自启
+4.验证
+date -s '2008-10-1'
+systemctl restart chronyd
+
+############################################################################
+cron计划任务
+软件包:cronie、crontabs
+系统服务:crond
+日志文件:/var/log/crond
+
+分   时   日   月   周     任务命令行(绝对路径)
+*   匹配范围内任意时间
+,   分隔多个不连续的时间点
+-   指定连续时间范围
+/n 指定时间频率,每n...
+
+管理计划任务策略
+使用crontab 命令
+crontab -e -u 用户名     编辑(crontab -e -u root )以root身份编辑计划任务
+crontab -l -u 用户名      查看(crontab -l -u root)查看root用户的计划任务
+crontab -r -u 用户名     清除
+
+每分钟记录当前系统的时间,写入到/opt/time.txt
+* * * * *  date >> /opt/time.txt
+
+cat /var/spool/cron/root             生成的任务文件
+##########################################################################
+LDAP认证
+     网络用户：由网络中一台服务器提供用户名、密码
+     本地用户：/etc/passwd
+1.安装sssd客户端软件
+2.安装图形工具配置软件  authconfig-gtk
+3.运行authconfig-gtk图形工具
+选择LDAP
+   dc=example,dc=com               指定服务端域名
+   classroom.example.com          指定服务端主机名
+勾选TLS加密
+使用证书加密:  http://classroom.example.com/pub/example-ca.crt
+选择LDAP密码
+4.验证
+   systemctl restart sssd
+   grep ldapuser0 /etc/passwd
+   id ldapuser0
+
+########################################################
+家目录漫游
+由NFS服务器将指定的文件夹共享给客户
+NFS服务端：classroom.example.com
+ 1. 查看服务端有那些共享文件夹
+    showmount -e classroom.example.com
+ 2.访问共享文件夹，利用mount提供访问点
+    mkdir /home/guests
+    mount classroom.example.com:/home/guests/  /home/guests
+    ls /home/guests
+    su - ldapuser12
+
+###############################################################################
+###############################################################################
+setenforce 0       修改当前SELinux状态
+getenforce         查看当前SELinux状态
+
+防火墙策略管理
+Web服务:提供一个页面内容的服务
+1.安装httpd软件包
+2.重启httpd服务　　　　systemctl restart httpd
+3.在虚拟机server书写一个页面文件
+      默认存放网页文件的路径: /var/www/html
+      默认页面文件名称:index.html
+<marquee><font  color=red><h1>NSD1903阳光明媚
+   滚动          字体颜色  红色        标题字体
+
+虚拟机server构建FTP服务器
+1.安装vsftpd软件包
+2.重启vsftpd服务　　　systemctl restart vsftpd
+3.验证FTP服务　　　　　firefox ftp://172.25.0.11
+
+#################################################################################
+#######################################################################################
+#######################################################################################
+防火墙策略
+ • 管理工具:firewall-cmd（命令）、firewall-config（图形）
+
+预设安全区域
+public                 仅允许访问本机的sshd  ping  dhcpd服务
+trusted                允许任何访问
+block                  阻塞任何来访请求(明确拒绝,客户端有接收回应)
+drop                   丢弃任何来访的数据包(直接丢弃,客户端没有接收回应) 节省服务器资源
+
+ 数据包: 目标IP地址   源IP地址   数据
+
+firewall-cmd --get-default-zone  　　　 　           #查看默认区域
+firewall-cmd --set-default-zone=block                 #修改默认区域
+firewall-cmd --zone=public --list-all                     #查看区域规则
+firewall-cmd --zone=public --add-service=http   #添加协议
+firewall-cmd --permanent --z..........                       #永久添加策略
+firewall-cmd --reload                                            #重新加载所有防火墙策略
+firewall-cmd --zone=block --add-source=172.25.0.10        添加源IP的规则
+单独拒绝虚拟机desktop访问虚拟机server所有请求
+firewall-cmd --zone=public --add-forward-port=port=5423:proto=tcp:toport=80     端口转发5423=80
+firewall-cmd --zone=public --remove-forward-port=port=5423:proto=tcp:toport=80  删除端口转发
+
+#######################################################################################
+#######################################################################################
+#######################################################################################
+配置聚合连接 (网卡绑定、链路聚合)
+1.创建 虚拟网卡       man teamd.conf       #查看帮助信息
+nmcli  connection  add  type  team  con-name  team0   ifname  team0  
+autoconnect   yes   config   '{"runner": {"name": "activebackup"}}'
+nmcli  connection 添加  类型为   team（绑定类型）配置文件名为  team0   ifconfig显示网卡名为 team0  
+每次开机自起           配置网卡绑定工作模式    热备份方式
+ifconfig                                                    查看是否有team0网卡
+如果敲错误 
+nmcli  connection  delete team0              删除虚拟网卡team0
+
+2.添加成员
+nmcli connection add   type team-slave con-name team0-1 ifname eth1   master  team0
+nmcli connection add   type team-slave con-name team0-2 ifname eth2   master  team0
+nmcli connection 添加  类型为 team-slave 配置文件名 team0-1网卡为 eth1   添加到team0中
+如果敲错误           nmcli connection delete  team0-1     删除虚拟网卡team0-1
+
+3.配置team0的IP地址
+nmcli connection modify team0 ipv4.method manual 
+ipv4.addresses 192.168.1.1/24 connection.autoconnect yes
+
+4.激活所有配置
+nmcli connection up team0
+nmcli connection up team0-1
+nmcli connection up team0-2
+如果激活失败
+nmcli connection delete team0
+nmcli connection delete team0-1
+nmcli connection delete team0-2
+
+5.验证
+teamdctl team0 state       查看team0详细信息
+ifconfig eth1 down          禁用网卡
+teamdctl team0 state
+
+###################################################################################
+###################################################################################
+ISCSI网络磁盘    (防火墙设为trusted )(划分分区)
+
+虚拟机server0搭建iscsi服务端：
+1.安装可以提供共享存储功能的软件targetcli
+2.配置iscsi共享存储
+targetcli
+backstores/block  create  nsd  /dev/vdb1       指定后端存储是那个分区
+iscsi/  create iqn.2018-16.com.example:server0        创建箱子并起名
+              (iqn.yyyy-mm.  倒序域名   :自定义标识)
+iscsi/iqn.2018-16.com.example:server0/tpg1/luns 
+ create  /backstores/block/nsd                  将后端存储，放入箱子中
+
+iscsi/iqn.2018-16.com.example:server0/tpg1/acls
+ create  iqn.2018-16.com.example:test  设置ACL访问控制(客户端声称的名字)
+
+iscsi/iqn.2018-16.com.example:server0/tpg1/portals 
+ create   172.25.0.11                            设置提供服务的IP地址
+exit   #保存并退出
+3.重起服务
+systemctl  restart  target
+systemctl  enable  target
+
+
+虚拟机desktop0客户端：
+1.安装客户端软件包      iscsi-initiator-utils.i686
+2.修改配置文件，(客户端声称的名字)
+vim  /etc/iscsi/initiatorname.iscsi
+InitiatorName=iqn.2018-16.com.example:test
+3. 刷新
+systemctl restart iscsid
+systemctl daemon-reload
+4.寻找服务端，发现iSCSI磁盘    (man iscsiadm)
+iscsiadm --mode discoverydb --type sendtargets --portal 172.25.0.11 --discover
+5.重起iscsi服务
+systemctl restart iscsi
+lsblk
+
+################################################################################
+################################################################################
+Samba服务基础
+ 配置SMB共享，跨平台的共享，Windows与Linux的共享
+• 所需软件包:samba
+• 系统服务:smb
+pdbedit -a  用户名         #添加用户
+pdbedit -L  用户名         #查询用户
+pdbedit -x  用户名         #删除用户
+pdbedit  -L                    #查看所有Samba共享帐号
+
+path = 文件夹绝对路径
+write list = 用户1 .. .. //默认无
+valid users = 用户1 .. .. //默认任何用户
+hosts allow = 客户机地址 .. ..
+hosts deny = 客户机地址 .. ..
+###############################################################################
+总结:客户端访问服务端资源
+        1.服务本身的访问控制
+        2.本的目录的权限
+        3.防火墙
+      4.SELinux
+
+samba步骤
+
+服务端
+1.安装共享功能的软件软件包(samba)
+2.建立Samba共享验证的用户                 pdbedit -a  harry
+3.创建共享目录与文件         
+4.修改配置/etc/samba/smb.conf
+5.重起smb服务，刷新配置
+6.修改SELinux策略                        getsebool -a | grep samba
+7.用户本身的本地权限(读写设置)            setfacl -m  u:chihiro:rwx  /devops
+
+客户端
+1.安装访问samba共享软件包(samba-client)挂载软件包(cifs-utils)   #支持cifs协议
+2.查看服务端samba共享，看共享名         smbclient -L //172.25.0.11
+3.以用户身份，访问服务端samba共享       smbclient -U harry //172.25.0.11/common
+4.创建挂载目录
+5.设置开机自动挂载
+//172.25.0.11/common   /mnt/samba     cifs
+defaults,user=harry,pass=123,_netdev  0  0
+
+###############################################################################
+multiuser机制,专门为普通用户设计，专为客户端设计
+(普通用户都可以通过命令切换成权限较大的用户来临时获取写的权限)
+
+multiuser,提供对客户端多个用户身份的区分支持
+sec=ntlmssp,提供NT局域网管理安全支持
+
+客户端虚拟机Desktop
+vim  /etc/fstab
+//172.25.0.11/devops    /mnt/pub     cifs      defaults,user
+=kenji,pass=123,_netdev,multiuser,sec=ntlmssp     0   0
+umount  /mnt/pub
+mount -a
+su - student
+cifscreds add -u chihiro 172.25.0.11
+ls   /mnt/pub
+
+####################################################################################
+####################################################################################
+配置NFS共享, Linux与Linux的共享
+用途:为客户机提供共享使用的文件夹
+协议:NFS(TCP/UDP 2049)、RPC(TCP/UDP 111)
+
+只读的NFS共享
+
+服务端虚拟机server
+1.安装软件包 : nfs-utils
+rpm -qa  |  grep nfs            #显示所有已安装，进行过滤
+2.NFS共享主配置文件/etc/exports
+mkdir /nsd
+vim /etc/exports
+/nsd     *(ro)                  #共享目录路径      客户端(权限)
+3.重起nfs服务，设置为开机自起
+systemctl restart nfs-server
+systemctl enable nfs-server
+
+
+客户端虚拟机Desktop
+mkdir  /mnt/nfs
+vim   /etc/fstab
+172.25.0.11:/nsd    /mnt/nfs   nfs   defaults,_netdev   0   0
+mount -a
+
+######################################################################################
+######################################################################################
+基础邮件服务     　 SMTP:用户发邮件协议  25           pop3:用户收邮件协议  110
+DNS服务器：classroom.example.com以server0.example.com为例
+
+虚拟机Server0：
+1.安装postfix提供邮件功能的软件 
+  yum  -y  install  postfix
+2.修改配置文件/etc/postfix/main.cf 
+ vim  /etc/postfix/main.cf 
+ 99行  myorigin = server0.example.com       #默认补全的域名后缀
+116行 inet_interfaces = all                 #允许本机所有网卡
+164行 mydestination = server0.example.com   #判断为本域邮件
+3.重起postfix服务  
+
+使用mail命令发信/收信
+发信操作: mail  -s  '邮件标题'   -r  发件人   收件人
+收信操作: mail  -u    用户名
+echo xixi | mail -s 'xixi' -r zhangsan  lisi  #非交互式发邮件
+
+#######################################################################################
+#######################################################################################
+systemctl控制
+配置目录:/etc/systemd/system/
+服务目录:/lib/systemd/system/
+
+服务的控制
+ systemctl restart  服务名    #重起服务
+ systemctl start    服务名    #开启服务
+ systemctl stop     服务名    #停止服务
+ systemctl status   服务名    #查看服务当前的状态
+ systemctl enable   服务名    #设置服务开机自启动
+ systemctl disable  服务名    #设置服务不开机自启动
+
+RHEL6 运行级别    
+         0：关机    
+         1：单用户模式（基本功能的实现，破解Linux密码）
+	 2：多用户字符界面（不支持网络）    
+	 3：多用户字符界面（支持网络）服务器默认的运行级别   
+	 4：未定义
+	 5：图形界面   
+	 6：重起 
+切换运行级别：init  5  
+
+RHEL7 运行模式 
+   字符模式：multi-user.target
+   图形模式：graphical.target
+  ls -l /lib/systemd/system/
+
+systemctl isolate multi-user.target       当前切换到字符模式
+systemctl isolate graphical.target        当前切换到图形模式
+systemctl get-default                     查看开机默认进入模式
+systemctl set-default multi-user.target   永久设置开机自动进入图形模式
+reboot 
+
+#####################################################################################
+#####################################################################################
+RAID磁盘阵列
+
+• 廉价冗余磁盘阵列
+– 通过硬件/软件技术,将多个较小/低速的磁盘整合成一个大磁盘
+– 阵列的价值:提升I/O效率、硬件级别的数据冗余
+– 不同RAID级别的功能、特性各不相同
+
+• RAID 0,条带模式
+– 同一个文档分散存放在不同磁盘
+– 并行写入以提高效率
+– 至少由两块磁盘组成
+
+• RAID 1,镜像模式
+– 一个文档复制成多份,分别写入不同磁盘
+– 多份拷贝提高可靠性,效率无提升
+– 至少由两块磁盘组成
+
+• RAID5,高性价比模式
+– 相当于RAID0和RAID1的折中方案
+– 需要至少一块磁盘的容量来存放校验数据
+– 至少由三块磁盘组成
+
+• RAID6,高性价比/可靠模式
+– 相当于扩展的RAID5阵列,提供2份独立校验方案
+– 需要至少两块磁盘的容量来存放校验数据
+– 至少由四块磁盘组成
+
+• RAID 0+1/RAID 1+0
+– 整合RAID 0、RAID 1的优势
+– 并行存取提高效率、镜像写入提高可靠性
+– 至少由四块磁盘组成
+
+####################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
